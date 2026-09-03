@@ -1,0 +1,20 @@
+{
+  "name": "glassify",
+  "version": "0.0.2",
+  "description": "Glassify is a web-based image processing tool that allows users to apply Meta Glasses metadata into their media.",
+  "homepage": "https://github.com/BoredKevin/glassify#readme",
+  "bugs": {
+    "url": "https://github.com/BoredKevin/glassify/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BoredKevin/glassify.git"
+  },
+  "license": "MIT",
+  "author": "BoredKevin",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
