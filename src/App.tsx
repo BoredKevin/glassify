@@ -1,4 +1,4 @@
-import { ThemeProvider, AtmosphericAuroraBackground, Badge } from '@boredkevin/ui';
+import { ThemeProvider, AtmosphericAuroraBackground } from '@boredkevin/ui';
 import { HomePage } from './pages/HomePage';
 import { Glasses } from 'lucide-react';
 
