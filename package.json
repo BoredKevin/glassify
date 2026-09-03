@@ -1,6 +1,6 @@
 {
   "name": "glassify",
-  "version": "0.0.2",
+  "version": "0.9.1",
   "description": "Glassify is a web-based image processing tool that allows users to apply Meta Glasses metadata into their media.",
   "homepage": "https://github.com/BoredKevin/glassify#readme",
   "bugs": {
