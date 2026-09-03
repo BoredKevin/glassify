@@ -48,7 +48,7 @@ export default function App() {
               <span className="text-muted-foreground/60 select-none">•</span>
               <span>v{__APP_VERSION__}</span>
               <span className="text-muted-foreground/60 select-none">•</span>
-              <span>({__BUILD_HASH__})</span>
+              <span>{__BUILD_HASH__}</span>
               <span className="text-muted-foreground/60 select-none">•</span>
               <LicensesModal />
             </div>
