@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@boredkevin/ui';
-import { MoveHorizontal, Play, Pause, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { MoveHorizontal, Play, Pause, ArrowLeft, CheckCircle2, Loader2, RotateCcw } from 'lucide-react';
+import type { EditConfig } from '../lib/processImage';
 
 interface SpinPreviewProps {
   imageSrc: string;
   fileName: string;
+  editConfig?: EditConfig;
   onConvert: () => void;
   onBack: () => void;
   isConverting: boolean;
@@ -13,33 +15,61 @@ interface SpinPreviewProps {
 export const SpinPreview: React.FC<SpinPreviewProps> = ({
   imageSrc,
   fileName,
+  editConfig,
   onConvert,
   onBack,
   isConverting
 }) => {
-  // Tilt angle in degrees (-40 to +40)
+  // Free 360-degree rotation angle
   const [tiltAngle, setTiltAngle] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(false);
 
   const dragStartXRef = useRef<number>(0);
   const startAngleRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
+  const lastAngleRef = useRef<number>(0);
+  const velocityRef = useRef<number>(0);
+
+  const inertiaAnimRef = useRef<number | null>(null);
   const autoPlayAnimRef = useRef<number | null>(null);
 
-  // Handle pointer drag (works for mouse and touch)
+  // Stop any ongoing inertia animation
+  const stopInertia = () => {
+    if (inertiaAnimRef.current) {
+      cancelAnimationFrame(inertiaAnimRef.current);
+      inertiaAnimRef.current = null;
+    }
+  };
+
+  // Pointer drag controls (full 360 continuous rotation)
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isAutoPlaying) setIsAutoPlaying(false);
+    stopInertia();
+
     setIsDragging(true);
     dragStartXRef.current = e.clientX;
     startAngleRef.current = tiltAngle;
+    lastTimeRef.current = performance.now();
+    lastAngleRef.current = tiltAngle;
+    velocityRef.current = 0;
+
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging) return;
+    const now = performance.now();
+    const dt = Math.max(1, now - lastTimeRef.current);
+
     const deltaX = e.clientX - dragStartXRef.current;
-    // Map pixels to degrees: ~3.5px per degree
-    const newAngle = Math.max(-42, Math.min(42, startAngleRef.current + deltaX * 0.35));
+    // Map drag pixels to degrees (~0.65 degrees per pixel)
+    const newAngle = startAngleRef.current + deltaX * 0.65;
+
+    velocityRef.current = (newAngle - lastAngleRef.current) / dt;
+    lastTimeRef.current = now;
+    lastAngleRef.current = newAngle;
+
     setTiltAngle(newAngle);
   };
 
@@ -49,12 +79,28 @@ export const SpinPreview: React.FC<SpinPreviewProps> = ({
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
-      // Ignore if pointer capture already lost
+      // ignore
+    }
+
+    // Launch inertia coasting loop if flick velocity is noticeable
+    let currentVel = velocityRef.current * 16; // speed per frame (~16ms)
+    if (Math.abs(currentVel) > 0.4) {
+      const stepInertia = () => {
+        currentVel *= 0.93; // smooth decay
+        if (Math.abs(currentVel) < 0.08) {
+          stopInertia();
+          return;
+        }
+        setTiltAngle((prev) => prev + currentVel);
+        inertiaAnimRef.current = requestAnimationFrame(stepInertia);
+      };
+      inertiaAnimRef.current = requestAnimationFrame(stepInertia);
     }
   };
 
-  // Auto-play tilt animation toggle
+  // Auto-play animation toggle
   const toggleAutoPlay = useCallback(() => {
+    stopInertia();
     setIsAutoPlaying((prev) => !prev);
   }, []);
 
@@ -68,10 +114,12 @@ export const SpinPreview: React.FC<SpinPreviewProps> = ({
     }
 
     const startTime = performance.now();
+    const initialAngle = tiltAngle;
+
     const animate = (time: number) => {
       const elapsed = (time - startTime) / 1000;
-      // Oscillate smoothly between -32 and +32 degrees
-      const angle = Math.sin(elapsed * 1.8) * 32;
+      // Oscillate smoothly across +/- 120 degrees
+      const angle = initialAngle + Math.sin(elapsed * 1.6) * 120;
       setTiltAngle(angle);
       autoPlayAnimRef.current = requestAnimationFrame(animate);
     };
@@ -83,31 +131,61 @@ export const SpinPreview: React.FC<SpinPreviewProps> = ({
         cancelAnimationFrame(autoPlayAnimRef.current);
       }
     };
-  }, [isAutoPlaying]);
+  }, [isAutoPlaying, tiltAngle]);
+
+  // Clean up animation frames
+  useEffect(() => {
+    return () => {
+      stopInertia();
+      if (autoPlayAnimRef.current) cancelAnimationFrame(autoPlayAnimRef.current);
+    };
+  }, []);
+
+  // Compute dynamic scale to ensure zero black bars at any rotation angle
+  const rad = (tiltAngle * Math.PI) / 180;
+  const cosA = Math.abs(Math.cos(rad));
+  const sinA = Math.abs(Math.sin(rad));
+  // iPhone 15 Pro screen aspect ratio is 843.5 / 389.5 ≈ 2.167
+  const dynamicScale = Math.max(1.0, cosA + 2.2 * sinA) * 1.08;
+
+  // Normalized display angle (-180 to 180 or modulo 360)
+  const normalizedDeg = Math.round(((tiltAngle % 360) + 360) % 360);
+  const displayDeg = normalizedDeg > 180 ? normalizedDeg - 360 : normalizedDeg;
+
+  // User edit configuration
+  const userRotation = (editConfig?.freeRotation || 0) + (editConfig?.cw90Count || 0) * 90;
+  const flipH = editConfig?.flipH || false;
+  const fitMode = editConfig?.fitMode || 'fill';
+  const userZoom = editConfig?.zoom || 1;
+  const userPanX = editConfig?.panX || 0;
+  const userPanY = editConfig?.panY || 0;
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-4">
-      {/* Title & helper text */}
+      {/* Title */}
       <div className="text-center space-y-1.5 px-2">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           See How It Spins
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-          Drag left and right on the phone. When viewers tilt their phone on Instagram, the photo stays level while the screen turns!
+          Drag left and right to tilt the phone 360°. The photo stays level with the horizon, exactly like Instagram Spin View!
         </p>
       </div>
 
       {/* Main Preview Card */}
-      <Card liquidGlass cornerLines telemetry="STEP.02">
+      <Card liquidGlass cornerLines telemetry="STEP.03">
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base font-semibold">Step 2: Spin Preview</CardTitle>
-              <CardDescription className="text-xs truncate max-w-[200px]">
+          {/* Header layout: flex-1 min-w-0 prevents button overflow on long filenames */}
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base font-semibold truncate">
+                Step 3: Spin Preview
+              </CardTitle>
+              <CardDescription className="text-xs truncate">
                 {fileName}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <Button
                 type="button"
                 variant="outline"
@@ -131,13 +209,15 @@ export const SpinPreview: React.FC<SpinPreviewProps> = ({
                 type="button"
                 variant="ghost"
                 onClick={() => {
+                  stopInertia();
                   setIsAutoPlaying(false);
                   setTiltAngle(0);
                 }}
                 disabled={tiltAngle === 0}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground border border-border/40"
               >
-                Reset
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset</span>
               </Button>
             </div>
           </div>
@@ -150,32 +230,69 @@ export const SpinPreview: React.FC<SpinPreviewProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            className={`relative w-full h-[360px] sm:h-[400px] rounded-2xl bg-black/60 border border-border/80 flex items-center justify-center overflow-hidden touch-none select-none cursor-grab active:cursor-grabbing ${isDragging ? 'border-primary/60 shadow-[0_0_20px_rgba(56,189,248,0.2)]' : ''
-              }`}
+            className={`relative w-full h-[380px] sm:h-[420px] rounded-2xl bg-black/70 border border-border/80 flex items-center justify-center overflow-hidden touch-none select-none cursor-grab active:cursor-grabbing ${
+              isDragging ? 'border-primary/60 shadow-[0_0_24px_rgba(56,189,248,0.25)]' : ''
+            }`}
           >
-            {/* Background horizon reference grid */}
+            {/* Horizon reference grid */}
             <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]" />
 
-            {/* Simulated Horizon line (stays perfectly level behind phone) */}
-            <div className="absolute left-4 right-4 h-[1px] bg-primary/20 pointer-events-none" />
+            {/* Level horizon indicator behind phone */}
+            <div className="absolute left-3 right-3 h-[1px] bg-primary/20 pointer-events-none" />
 
-            {/* Tilted Phone Container */}
+            {/* ======================================================== */}
+            {/* ACCURATE IPHONE 15 PRO MOCKUP (433 x 882 PROPORTIONS)   */}
+            {/* ======================================================== */}
             <div
-              className="relative w-[184px] h-[330px] rounded-[38px] p-[6px] bg-gradient-to-b from-zinc-700 via-zinc-900 to-black shadow-2xl border border-white/20 transition-transform will-change-transform"
+              className="relative w-[190px] h-[386px] transition-transform will-change-transform flex items-center justify-center"
               style={{
                 transform: `rotate(${tiltAngle}deg)`,
-                transition: isDragging ? 'none' : 'transform 0.15s ease-out'
+                transition: isDragging ? 'none' : 'transform 0.08s ease-out'
               }}
             >
-              {/* Phone Inner Bezel */}
-              <div className="relative w-full h-full rounded-[32px] overflow-hidden bg-black flex items-center justify-center border border-white/10">
-                {/* Simulated Dynamic Island / Speaker Pill */}
-                <div className="absolute top-2.5 z-30 w-16 h-3.5 bg-black rounded-full border border-white/10 flex items-center justify-end px-1.5 shadow-md">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
+              {/* LAYER A: COUNTER-ROTATING SCREEN IMAGE LAYER (Underneath SVG frame) */}
+              <div
+                className="absolute overflow-hidden bg-black flex items-center justify-center"
+                style={{
+                  top: '2.18%',
+                  left: '4.91%',
+                  width: '89.95%',
+                  height: '95.64%',
+                  borderRadius: '28px',
+                  zIndex: 5
+                }}
+              >
+                {/* Fit Mode Blurred Ambient Background */}
+                {fitMode === 'fit' && (
+                  <img
+                    src={imageSrc}
+                    alt="Background Blur"
+                    className="absolute inset-0 w-full h-full object-cover scale-150 filter blur-xl opacity-60 pointer-events-none"
+                  />
+                )}
+
+                {/* Oversized Centered Container to guarantee 0 black bars at any 360° angle */}
+                <div
+                  className="absolute flex items-center justify-center pointer-events-none will-change-transform"
+                  style={{
+                    width: '380px',
+                    height: '380px',
+                    transform: `rotate(${-tiltAngle}deg) scale(${dynamicScale * userZoom}) translate(${userPanX}px, ${userPanY}px)`
+                  }}
+                >
+                  <img
+                    src={imageSrc}
+                    alt="Spin View Live"
+                    className="w-full h-full pointer-events-none"
+                    style={{
+                      objectFit: fitMode === 'stretch' ? 'fill' : fitMode === 'fit' ? 'contain' : 'cover',
+                      transform: `scaleX(${flipH ? -1 : 1}) rotate(${userRotation}deg)`
+                    }}
+                  />
                 </div>
 
-                {/* Instagram Story Top UI Mockup */}
-                <div className="absolute top-8 left-3 right-3 z-20 flex items-center justify-between text-[10px] text-white/90 drop-shadow-md pointer-events-none">
+                {/* Instagram Story Top Header Overlay */}
+                <div className="absolute top-7 left-3 right-3 z-20 flex items-center justify-between text-[10px] text-white drop-shadow-md pointer-events-none">
                   <div className="flex items-center gap-1.5 font-medium">
                     <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600 p-[1px]">
                       <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-[7px]">
@@ -186,64 +303,110 @@ export const SpinPreview: React.FC<SpinPreviewProps> = ({
                   </div>
                 </div>
 
-                {/* Image Inside: Counter-rotated to stay level with real world */}
-                <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
-                  <img
-                    src={imageSrc}
-                    alt="Spin View Preview"
-                    className="absolute w-full h-full object-cover pointer-events-none will-change-transform"
-                    style={{
-                      // Zoom in 135% so edges are never exposed at extreme rotation angles
-                      transform: `scale(1.35) rotate(${-tiltAngle}deg)`,
-                      transition: isDragging ? 'none' : 'transform 0.15s ease-out'
-                    }}
-                  />
-                </div>
-
-                {/* Bottom Instagram Story Reply pill mockup */}
+                {/* Instagram Story Bottom Reply Mockup */}
                 <div className="absolute bottom-3 left-3 right-3 z-20 pointer-events-none">
-                  <div className="w-full h-6 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center px-3 text-[9px] text-white/75">
+                  <div className="w-full h-6 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center px-3 text-[9px] text-white/80">
                     Send message...
                   </div>
                 </div>
               </div>
+
+              {/* LAYER B: ACCURATE IPHONE 15 PRO SVG FRAME (Positioned above image) */}
+              <svg
+                viewBox="0 0 433 882"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="absolute inset-0 w-full h-full pointer-events-none drop-shadow-2xl z-10"
+              >
+                {/* Outer Titanium Chassis */}
+                <path
+                  d="M2 73C2 32.6832 34.6832 0 75 0H357C397.317 0 430 32.6832 430 73V809C430 849.317 397.317 882 357 882H75C34.6832 882 2 849.317 2 809V73Z"
+                  className="fill-[#262626] stroke-[#525252] stroke-[1.5]"
+                />
+                {/* Action Button (Left Top) */}
+                <path
+                  d="M0 171C0 170.448 0.447715 170 1 170H3V204H1C0.447715 204 0 203.552 0 203V171Z"
+                  className="fill-[#525252]"
+                />
+                {/* Volume Up Button */}
+                <path
+                  d="M1 234C1 233.448 1.44772 233 2 233H3.5V300H2C1.44772 300 1 299.552 1 299V234Z"
+                  className="fill-[#525252]"
+                />
+                {/* Volume Down Button */}
+                <path
+                  d="M1 319C1 318.448 1.44772 318 2 318H3.5V385H2C1.44772 385 1 384.552 1 384V319Z"
+                  className="fill-[#525252]"
+                />
+                {/* Power / Siri Button (Right) */}
+                <path
+                  d="M430 279H432C432.552 279 433 279.448 433 280V384C433 384.552 432.552 385 432 385H430V279Z"
+                  className="fill-[#525252]"
+                />
+                {/* Inner Screen Bezel Border */}
+                <path
+                  d="M6 74C6 35.3401 37.3401 4 76 4H356C394.66 4 426 35.3401 426 74V808C426 846.66 394.66 878 356 878H76C37.3401 878 6 846.66 6 808V74Z"
+                  className="stroke-[#171717] stroke-[3]"
+                />
+                {/* Speaker Earpiece Slit */}
+                <path
+                  opacity="0.6"
+                  d="M174 5H258V5.5C258 6.60457 257.105 7.5 256 7.5H176C174.895 7.5 174 6.60457 174 5.5V5Z"
+                  className="fill-[#737373]"
+                />
+                {/* Screen Outline / Subtle Glass Reflection */}
+                <path
+                  d="M21.25 75C21.25 44.2101 46.2101 19.25 77 19.25H355C385.79 19.25 410.75 44.2101 410.75 75V807C410.75 837.79 385.79 862.75 355 862.75H77C46.2101 862.75 21.25 837.79 21.25 807V75Z"
+                  className="stroke-white/10 stroke-[1]"
+                />
+                {/* Dynamic Island Pill Cutout */}
+                <path
+                  d="M154 48.5C154 38.2827 162.283 30 172.5 30H259.5C269.717 30 278 38.2827 278 48.5C278 58.7173 269.717 67 259.5 67H172.5C162.283 67 154 58.7173 154 48.5Z"
+                  className="fill-black"
+                />
+                {/* Front Camera Lens Accent */}
+                <circle cx="258" cy="48.5" r="7.5" className="fill-[#1e293b]" />
+                <circle cx="258" cy="48.5" r="3.5" className="fill-[#0f172a]" />
+              </svg>
             </div>
 
             {/* Live Angle Indicator Overlay */}
             <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2 pointer-events-none">
-              <span className="bg-black/70 backdrop-blur-md text-foreground/80 font-mono text-[11px] px-2 py-0.5 rounded-full border border-white/10">
-                Phone tilt: {tiltAngle.toFixed(0)}°
+              <span className="bg-black/75 backdrop-blur-md text-foreground font-mono text-[11px] px-2 py-0.5 rounded-full border border-white/15">
+                Tilt: {displayDeg > 0 ? `+${displayDeg}°` : `${displayDeg}°`}
               </span>
             </div>
 
             {/* Drag hint overlay at center top */}
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex items-center gap-1 text-[11px] font-medium bg-black/60 backdrop-blur-md text-foreground/80 px-2.5 py-1 rounded-full border border-white/10">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex items-center gap-1 text-[11px] font-medium bg-black/70 backdrop-blur-md text-foreground px-2.5 py-1 rounded-full border border-white/15">
               <MoveHorizontal className="w-3.5 h-3.5 text-primary animate-pulse" />
-              <span>Drag to tilt phone</span>
+              <span>Drag to tilt 360°</span>
             </div>
           </div>
 
-          {/* Quick Preset Buttons for easy mobile interaction */}
-          <div className="flex items-center justify-center gap-2">
+          {/* Quick Preset Buttons */}
+          <div className="grid grid-cols-4 gap-1.5">
             <Button
               type="button"
               variant="outline"
               onClick={() => {
+                stopInertia();
                 setIsAutoPlaying(false);
-                setTiltAngle(-30);
+                setTiltAngle(-90);
               }}
-              className="h-7 text-xs px-2"
+              className="h-8 text-xs px-1"
             >
-              Tilt Left (-30°)
+              -90°
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => {
+                stopInertia();
                 setIsAutoPlaying(false);
                 setTiltAngle(0);
               }}
-              className="h-7 text-xs px-2"
+              className="h-8 text-xs px-1"
             >
               Center (0°)
             </Button>
@@ -251,12 +414,25 @@ export const SpinPreview: React.FC<SpinPreviewProps> = ({
               type="button"
               variant="outline"
               onClick={() => {
+                stopInertia();
                 setIsAutoPlaying(false);
-                setTiltAngle(30);
+                setTiltAngle(90);
               }}
-              className="h-7 text-xs px-2"
+              className="h-8 text-xs px-1"
             >
-              Tilt Right (+30°)
+              +90°
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                stopInertia();
+                setIsAutoPlaying(false);
+                setTiltAngle(180);
+              }}
+              className="h-8 text-xs px-1"
+            >
+              180°
             </Button>
           </div>
 
@@ -290,7 +466,7 @@ export const SpinPreview: React.FC<SpinPreviewProps> = ({
               className="w-full h-9 text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Pick a different photo</span>
+              <span>Back to Edit Photo</span>
             </Button>
           </div>
         </CardContent>

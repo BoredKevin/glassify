@@ -1,31 +1,48 @@
 import { Check } from 'lucide-react';
 
-export type Step = 1 | 2 | 3;
+export type Step = 1 | 2 | 3 | 4;
 
 interface StepBarProps {
   currentStep: Step;
   onStepClick?: (step: Step) => void;
   canNavigateToStep2: boolean;
   canNavigateToStep3: boolean;
+  canNavigateToStep4: boolean;
 }
 
 const STEPS = [
-  { step: 1 as Step, title: 'Pick Photo' },
-  { step: 2 as Step, title: 'Preview Spin' },
-  { step: 3 as Step, title: 'Save' }
+  { step: 1 as Step, title: 'Pick' },
+  { step: 2 as Step, title: 'Edit' },
+  { step: 3 as Step, title: 'Spin' },
+  { step: 4 as Step, title: 'Save' }
 ];
 
 export const StepBar: React.FC<StepBarProps> = ({
   currentStep,
   onStepClick,
   canNavigateToStep2,
-  canNavigateToStep3
+  canNavigateToStep3,
+  canNavigateToStep4
 }) => {
   const isAccessible = (step: Step) => {
     if (step === 1) return true;
     if (step === 2) return canNavigateToStep2;
     if (step === 3) return canNavigateToStep3;
+    if (step === 4) return canNavigateToStep4;
     return false;
+  };
+
+  const getProgressWidth = (step: Step) => {
+    switch (step) {
+      case 1:
+        return '0%';
+      case 2:
+        return '33.333%';
+      case 3:
+        return '66.666%';
+      case 4:
+        return '100%';
+    }
   };
 
   return (
@@ -33,20 +50,13 @@ export const StepBar: React.FC<StepBarProps> = ({
       <div className="relative">
         {/* Track lines container: perfectly centered vertically on the 36px (h-9) circles */}
         <div className="absolute left-[18px] right-[18px] top-[18px] -translate-y-1/2 h-[2px] z-0 pointer-events-none">
-          {/* Background track line - crisp visible white/25 */}
+          {/* Background track line */}
           <div className="w-full h-full bg-white/25 rounded-full" />
 
           {/* Highlight active track line */}
           <div
             className="absolute left-0 top-0 h-full bg-primary shadow-[0_0_8px_rgba(56,189,248,0.7)] rounded-full transition-all duration-300"
-            style={{
-              width:
-                currentStep === 1
-                  ? '0%'
-                  : currentStep === 2
-                    ? '50%'
-                    : '100%'
-            }}
+            style={{ width: getProgressWidth(currentStep) }}
           />
         </div>
 
