@@ -1,4 +1,3 @@
-import { Badge } from '@boredkevin/ui';
 import { Check } from 'lucide-react';
 
 export type Step = 1 | 2 | 3;
@@ -30,74 +29,73 @@ export const StepBar: React.FC<StepBarProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto py-2">
-      <div className="relative flex items-center justify-between">
-        {/* Background track line */}
-        <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[2px] bg-border z-0" />
+    <div className="w-full max-w-md mx-auto py-2 px-1">
+      <div className="relative">
+        {/* Track lines container: perfectly centered vertically on the 36px (h-9) circles */}
+        <div className="absolute left-[18px] right-[18px] top-[18px] -translate-y-1/2 h-[2px] z-0 pointer-events-none">
+          {/* Background track line - crisp visible white/25 */}
+          <div className="w-full h-full bg-white/25 rounded-full" />
 
-        {/* Highlight track line */}
-        <div
-          className="absolute left-6 top-1/2 -translate-y-1/2 h-[2px] bg-primary transition-all duration-300 z-0"
-          style={{
-            width:
-              currentStep === 1
-                ? '0%'
-                : currentStep === 2
-                ? '50%'
-                : 'calc(100% - 3rem)'
-          }}
-        />
+          {/* Highlight active track line */}
+          <div
+            className="absolute left-0 top-0 h-full bg-primary shadow-[0_0_8px_rgba(56,189,248,0.7)] rounded-full transition-all duration-300"
+            style={{
+              width:
+                currentStep === 1
+                  ? '0%'
+                  : currentStep === 2
+                    ? '50%'
+                    : '100%'
+            }}
+          />
+        </div>
 
         {/* Steps */}
-        {STEPS.map((s) => {
-          const isCurrent = currentStep === s.step;
-          const isPassed = currentStep > s.step;
-          const clickable = isAccessible(s.step) && onStepClick;
+        <div className="relative z-10 flex items-start justify-between">
+          {STEPS.map((s) => {
+            const isCurrent = currentStep === s.step;
+            const isPassed = currentStep > s.step;
+            const clickable = isAccessible(s.step) && onStepClick;
 
-          return (
-            <button
-              key={s.step}
-              type="button"
-              disabled={!clickable}
-              onClick={() => clickable && onStepClick(s.step)}
-              className={`relative z-10 flex flex-col items-center gap-1.5 focus:outline-none transition-transform ${
-                clickable ? 'cursor-pointer active:scale-95' : 'cursor-default'
-              }`}
-            >
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all border ${
-                  isPassed
-                    ? 'bg-primary text-primary-foreground border-primary shadow-[0_0_12px_rgba(56,189,248,0.35)]'
-                    : isCurrent
-                    ? 'bg-card text-foreground border-primary shadow-[0_0_14px_rgba(56,189,248,0.45)] ring-2 ring-primary/40'
-                    : 'bg-card text-muted-foreground border-border'
+            return (
+              <button
+                key={s.step}
+                type="button"
+                disabled={!clickable}
+                onClick={() => clickable && onStepClick(s.step)}
+                className={`flex flex-col items-center gap-1.5 focus:outline-none transition-transform ${
+                  clickable ? 'cursor-pointer active:scale-95' : 'cursor-default'
                 }`}
               >
-                {isPassed ? <Check className="w-4 h-4 stroke-[3]" /> : s.step}
-              </div>
-
-              <div className="flex flex-col items-center">
-                <span
-                  className={`text-xs font-semibold whitespace-nowrap transition-colors ${
-                    isCurrent
-                      ? 'text-foreground'
-                      : isPassed
-                      ? 'text-primary'
-                      : 'text-muted-foreground'
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all border-2 ${
+                    isPassed
+                      ? 'bg-primary text-primary-foreground border-primary shadow-[0_0_12px_rgba(56,189,248,0.4)]'
+                      : isCurrent
+                        ? 'bg-background text-white border-white ring-4 ring-primary/30 shadow-[0_0_14px_rgba(56,189,248,0.5)]'
+                        : 'bg-background text-white/80 border-white/50 hover:border-white/80'
                   }`}
                 >
-                  {s.title}
-                </span>
+                  {isPassed ? <Check className="w-4 h-4 stroke-[3]" /> : s.step}
+                </div>
 
-                {isCurrent && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 mt-0.5 border-primary/40 text-primary">
-                    Active
-                  </Badge>
-                )}
-              </div>
-            </button>
-          );
-        })}
+                <div className="flex flex-col items-center">
+                  <span
+                    className={`text-xs font-semibold whitespace-nowrap transition-colors ${
+                      isCurrent
+                        ? 'text-white font-bold'
+                        : isPassed
+                          ? 'text-primary'
+                          : 'text-white/60'
+                    }`}
+                  >
+                    {s.title}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
