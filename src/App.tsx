@@ -1,8 +1,11 @@
 import { ThemeProvider, AtmosphericAuroraBackground } from '@boredkevin/ui';
 import { HomePage } from './pages/HomePage';
+import { LicensesModal } from './components/LicensesModal';
 import { Glasses } from 'lucide-react';
 
 export default function App() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <ThemeProvider>
       <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden flex flex-col">
@@ -32,14 +35,29 @@ export default function App() {
 
           {/* Footer */}
           <footer className="w-full max-w-md py-4 text-center text-xs text-muted-foreground border-t border-border/40 mt-auto">
-            <p className="flex items-center justify-center gap-1.5">
-              <span>boredkevin/glassify</span>
-              <span>•</span>
-              <span>v0.2.0</span>
-            </p>
+            <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+              <span>© {currentYear}</span>
+              <a
+                href="https://github.com/boredkevin/glassify"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground hover:underline transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-sm"
+              >
+                boredkevin/glassify
+              </a>
+              <span className="text-muted-foreground/60 select-none">•</span>
+              <span>v{__APP_VERSION__}</span>
+              <span className="text-muted-foreground/60 select-none">•</span>
+              <span>({__BUILD_HASH__})</span>
+              <span className="text-muted-foreground/60 select-none">•</span>
+              <LicensesModal />
+            </div>
           </footer>
         </div>
       </div>
     </ThemeProvider>
   );
 }
+
+
+
