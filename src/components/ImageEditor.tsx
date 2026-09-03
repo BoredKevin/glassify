@@ -77,9 +77,9 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
     if (!isPanning) return;
     const deltaX = e.clientX - dragStartRef.current.x;
     const deltaY = e.clientY - dragStartRef.current.y;
-    // Map to percentage offsets (~0.25% per pixel)
-    const newPanX = dragStartRef.current.startPanX + deltaX * 0.25;
-    const newPanY = dragStartRef.current.startPanY + deltaY * 0.25;
+    // Map drag pixels to percentage of the 270x360 3:4 frame
+    const newPanX = dragStartRef.current.startPanX + (deltaX / 270) * 100;
+    const newPanY = dragStartRef.current.startPanY + (deltaY / 360) * 100;
     setPanX(newPanX);
     setPanY(newPanY);
   };
@@ -95,9 +95,10 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
 
     // In Fill mode, clamp pan so image doesn't expose empty edges
     if (fitMode === 'fill') {
-      const maxPan = Math.max(0, (zoom - 1) * 35);
-      setPanX((prev) => Math.max(-maxPan, Math.min(maxPan, prev)));
-      setPanY((prev) => Math.max(-maxPan, Math.min(maxPan, prev)));
+      const maxPanX = Math.max(0, (zoom - 1) * 35);
+      const maxPanY = Math.max(0, (zoom - 1) * 35);
+      setPanX((prev) => Math.max(-maxPanX, Math.min(maxPanX, prev)));
+      setPanY((prev) => Math.max(-maxPanY, Math.min(maxPanY, prev)));
     }
   };
 
@@ -232,60 +233,62 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
           </div>
 
           {/* 3:4 Interactive Crop/Frame Stage */}
-          <div
-            onPointerDown={handlePanStart}
-            onPointerMove={handlePanMove}
-            onPointerUp={handlePanEnd}
-            onPointerCancel={handlePanEnd}
-            onWheel={handleWheel}
-            className={`relative w-full h-[360px] sm:h-[390px] rounded-2xl bg-black border border-border/80 overflow-hidden flex items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing ${
-              isPanning ? 'border-primary/60' : ''
-            }`}
-          >
-            {/* Fit mode: Blurred background copy of image */}
-            {fitMode === 'fit' && (
-              <img
-                src={imageSrc}
-                alt="Blurred background"
-                className="absolute inset-0 w-full h-full object-cover scale-125 filter blur-xl opacity-60 pointer-events-none"
-              />
-            )}
-
-            {/* 3:4 Guide Frame Overlay */}
-            <div className="absolute inset-2 sm:inset-4 border border-white/20 rounded-xl pointer-events-none z-20">
-              <div className="absolute top-2 left-2 text-[10px] text-white/60 font-mono bg-black/50 px-1.5 py-0.5 rounded">
-                3:4 Frame
-              </div>
-              <div className="absolute top-2 right-2 text-[10px] text-white/60 font-mono bg-black/50 px-1.5 py-0.5 rounded">
-                {zoom.toFixed(1)}× Zoom
-              </div>
-            </div>
-
-            {/* Main Manipulated Image */}
+          <div className="flex items-center justify-center w-full py-1">
             <div
-              className="relative w-full h-full flex items-center justify-center overflow-hidden pointer-events-none"
-              style={{
-                transform: `translate(${panX}%, ${panY}%) scale(${zoom})`
-              }}
+              onPointerDown={handlePanStart}
+              onPointerMove={handlePanMove}
+              onPointerUp={handlePanEnd}
+              onPointerCancel={handlePanEnd}
+              onWheel={handleWheel}
+              className={`relative w-[270px] h-[360px] sm:w-[285px] sm:h-[380px] rounded-2xl bg-black border border-border/80 overflow-hidden flex items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing shadow-lg ${
+                isPanning ? 'border-primary/60 shadow-[0_0_20px_rgba(56,189,248,0.2)]' : ''
+              }`}
             >
-              <img
-                src={imageSrc}
-                alt="Edited"
-                className="max-w-none transition-transform will-change-transform pointer-events-none"
-                style={{
-                  width: fitMode === 'stretch' ? '100%' : fitMode === 'fill' ? '100%' : 'auto',
-                  height: fitMode === 'stretch' ? '100%' : fitMode === 'fill' ? '100%' : 'auto',
-                  maxHeight: fitMode === 'fit' ? '88%' : undefined,
-                  maxWidth: fitMode === 'fit' ? '88%' : undefined,
-                  objectFit: fitMode === 'stretch' ? 'fill' : fitMode === 'fill' ? 'cover' : 'contain',
-                  transform: `scaleX(${flipH ? -1 : 1}) rotate(${totalRotation}deg)`
-                }}
-              />
-            </div>
+              {/* Fit mode: Blurred background copy of image */}
+              {fitMode === 'fit' && (
+                <img
+                  src={imageSrc}
+                  alt="Blurred background"
+                  className="absolute inset-0 w-full h-full object-cover scale-125 filter blur-xl opacity-60 pointer-events-none"
+                />
+              )}
 
-            {/* Pan & Zoom Hint */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-black/75 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] text-white/70 border border-white/10">
-              Drag to pan • Scroll to zoom
+              {/* 3:4 Guide Frame Overlay */}
+              <div className="absolute inset-2 border border-white/20 rounded-xl pointer-events-none z-20">
+                <div className="absolute top-2 left-2 text-[10px] text-white/70 font-mono bg-black/60 px-1.5 py-0.5 rounded">
+                  3:4 Meta Frame
+                </div>
+                <div className="absolute top-2 right-2 text-[10px] text-white/70 font-mono bg-black/60 px-1.5 py-0.5 rounded">
+                  {zoom.toFixed(1)}× Zoom
+                </div>
+              </div>
+
+              {/* Main Manipulated Image */}
+              <div
+                className="relative w-full h-full flex items-center justify-center overflow-hidden pointer-events-none"
+                style={{
+                  transform: `translate(${panX}%, ${panY}%) scale(${zoom})`
+                }}
+              >
+                <img
+                  src={imageSrc}
+                  alt="Edited"
+                  className="max-w-none transition-transform will-change-transform pointer-events-none"
+                  style={{
+                    width: fitMode === 'stretch' ? '100%' : fitMode === 'fill' ? '100%' : 'auto',
+                    height: fitMode === 'stretch' ? '100%' : fitMode === 'fill' ? '100%' : 'auto',
+                    maxHeight: fitMode === 'fit' ? '92%' : undefined,
+                    maxWidth: fitMode === 'fit' ? '92%' : undefined,
+                    objectFit: fitMode === 'stretch' ? 'fill' : fitMode === 'fill' ? 'cover' : 'contain',
+                    transform: `scaleX(${flipH ? -1 : 1}) rotate(${totalRotation}deg)`
+                  }}
+                />
+              </div>
+
+              {/* Pan & Zoom Hint */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-black/75 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] text-white/70 border border-white/10">
+                Drag to pan • Scroll to zoom
+              </div>
             </div>
           </div>
 
