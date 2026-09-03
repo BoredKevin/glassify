@@ -177,7 +177,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
               onClick={onContinue}
               className="w-full text-sm font-semibold h-11"
             >
-              Continue to Preview Spin →
+              Continue to Edit Photo →
             </Button>
           )}
 
