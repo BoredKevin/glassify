@@ -20,19 +20,9 @@ export default function App() {
               <div className="flex flex-col">
                 <span className="font-bold text-sm tracking-wide text-foreground flex items-center gap-1.5">
                   Glassify
-                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 border-primary/30 text-primary">
-                    v0.1
-                  </Badge>
-                </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  Meta Glasses Media Converter
                 </span>
               </div>
             </div>
-
-            <Badge variant="secondary" className="text-[10px] font-mono">
-              Ray-Ban Meta 2
-            </Badge>
           </header>
 
           {/* Main App Experience */}

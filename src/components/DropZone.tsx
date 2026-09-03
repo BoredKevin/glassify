@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge } from '@boredkevin/ui';
-import { Upload, Camera, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@boredkevin/ui';
+import { Upload, Camera, Image as ImageIcon, AlertCircle } from 'lucide-react';
 
 interface DropZoneProps {
   onFileSelected: (file: File) => void;
@@ -63,7 +63,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
           Make Any Photo Spin
         </h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Stamp your photo with Ray-Ban Meta tags so viewers can tilt their phone to explore it on Instagram.
+          Stamp your photo with metadata so viewers can tilt their phone to explore it on Instagram.
         </p>
       </div>
 
@@ -107,10 +107,10 @@ export const DropZone: React.FC<DropZoneProps> = ({
             onDrop={onDrop}
             onClick={() => fileInputRef.current?.click()}
             className={`group relative rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-200 ${isDragging
-                ? 'border-primary bg-primary/10 scale-[0.99]'
-                : selectedFile
-                  ? 'border-primary/50 bg-card/60 hover:border-primary'
-                  : 'border-border bg-card/30 hover:border-primary/50 hover:bg-card/50'
+              ? 'border-primary bg-primary/10 scale-[0.99]'
+              : selectedFile
+                ? 'border-primary/50 bg-card/60 hover:border-primary'
+                : 'border-border bg-card/30 hover:border-primary/50 hover:bg-card/50'
               }`}
           >
             <input
@@ -182,7 +182,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
           )}
 
           <div className="pt-2 border-t border-border/50 text-[11px] text-muted-foreground text-center">
-            Processed 100% locally in your browser. Nothing is sent to any server.
+            Processed 100% locally in your browser
           </div>
         </CardContent>
       </Card>

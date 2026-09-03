@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge } from '@boredkevin/ui';
-import { RotateCw, MoveHorizontal, Play, Pause, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@boredkevin/ui';
+import { MoveHorizontal, Play, Pause, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface SpinPreviewProps {
   imageSrc: string;
@@ -89,10 +89,6 @@ export const SpinPreview: React.FC<SpinPreviewProps> = ({
     <div className="w-full max-w-md mx-auto flex flex-col gap-4">
       {/* Title & helper text */}
       <div className="text-center space-y-1.5 px-2">
-        <Badge variant="outline" className="text-xs px-2.5 py-1 border-primary/40 text-primary mb-1">
-          <RotateCw className="w-3 h-3 mr-1" />
-          Interactive Preview
-        </Badge>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           See How It Spins
         </h1>

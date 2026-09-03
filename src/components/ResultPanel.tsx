@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge } from '@boredkevin/ui';
-import { Download, Share2, Copy, Check, Sparkles, ArrowLeft, Smartphone, ShieldCheck } from 'lucide-react';
+import { Download, Share2, Copy, Check, ArrowLeft, Smartphone, ShieldCheck } from 'lucide-react';
 import { downloadBlob, shareBlob, copyTextToClipboard } from '../lib/shareOrDownload';
 import type { ProcessedImageResult } from '../lib/processImage';
 
@@ -41,10 +41,6 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onReset }) => 
     <div className="w-full max-w-md mx-auto flex flex-col gap-4">
       {/* Header Badge */}
       <div className="text-center space-y-1.5 px-2">
-        <Badge variant="success" className="text-xs px-2.5 py-1">
-          <Sparkles className="w-3 h-3 mr-1" />
-          Ready for Instagram
-        </Badge>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Your Photo is Ready!
         </h1>
